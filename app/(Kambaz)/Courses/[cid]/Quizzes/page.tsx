@@ -35,9 +35,14 @@ export default function Quizzes() {
   const role = currentUser?.role;
   const canEdit = role === "FACULTY" || role === "ADMIN";
 
-  const courseQuizzes = quizzes.filter(
-    (quiz: any) => quiz.course === cid
-  );
+  const courseQuizzes = quizzes
+    .filter((quiz: any) => quiz.course === cid)
+    .sort((a: any, b: any) => {
+      // Sort by available date
+      const dateA = a.availableDateInput ? new Date(a.availableDateInput).getTime() : 0;
+      const dateB = b.availableDateInput ? new Date(b.availableDateInput).getTime() : 0;
+      return dateA - dateB;
+    });
 
   // Fetch quizzes on component load
   useEffect(() => {
@@ -104,7 +109,7 @@ export default function Quizzes() {
         questions: [],
       };
       const createdQuiz = await coursesClient.createQuiz(cid as string, newQuiz);
-      router.push(`/Courses/${cid}/Quizzes/${createdQuiz._id}`);
+      router.push(`/Courses/${cid}/Quizzes/${createdQuiz._id}/Edit`);
     } catch (error) {
       console.error("Error creating quiz:", error);
     }

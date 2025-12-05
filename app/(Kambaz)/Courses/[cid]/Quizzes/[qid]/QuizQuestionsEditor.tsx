@@ -10,10 +10,14 @@ export default function QuizQuestionsEditor({
   quiz,
   onQuizChange,
   onSave,
+  onSaveAndPublish,
+  onCancel,
 }: {
   quiz: any;
   onQuizChange: (quiz: any) => void;
   onSave: (quiz: any) => void;
+  onSaveAndPublish: (quiz: any) => void;
+  onCancel: () => void;
 }) {
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const questions = quiz?.questions || [];
@@ -140,9 +144,15 @@ export default function QuizQuestionsEditor({
         </div>
       )}
 
-      <div className="mt-4">
+      <div className="d-flex gap-2 mt-4">
         <Button variant="primary" onClick={() => onSave(quiz)}>
-          Save Questions
+          Save
+        </Button>
+        <Button variant="success" onClick={() => onSaveAndPublish(quiz)}>
+          Save & Publish
+        </Button>
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
         </Button>
       </div>
     </div>

@@ -198,13 +198,25 @@ export default function QuestionEditor({
           <div className="mb-3">
             <Form.Group>
               <Form.Label>Correct Answer</Form.Label>
-              <Form.Select
-                value={formData.correctAnswer}
-                onChange={(e) => handleChange("correctAnswer", e.target.value)}
-              >
-                <option value="True">True</option>
-                <option value="False">False</option>
-              </Form.Select>
+              <div>
+                <Form.Check
+                  type="radio"
+                  id="true-option"
+                  name="trueFalseAnswer"
+                  label="True"
+                  checked={formData.correctAnswer === "True"}
+                  onChange={() => handleChange("correctAnswer", "True")}
+                  className="mb-2"
+                />
+                <Form.Check
+                  type="radio"
+                  id="false-option"
+                  name="trueFalseAnswer"
+                  label="False"
+                  checked={formData.correctAnswer === "False"}
+                  onChange={() => handleChange("correctAnswer", "False")}
+                />
+              </div>
             </Form.Group>
           </div>
         )}

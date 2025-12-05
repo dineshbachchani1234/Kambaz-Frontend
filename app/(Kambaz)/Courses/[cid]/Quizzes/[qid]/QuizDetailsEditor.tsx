@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from "react";
 import { Form, Row, Col, Button } from "react-bootstrap";
-import * as coursesClient from "../../../client";
 
 export default function QuizDetailsEditor({
   quiz,
@@ -25,6 +24,7 @@ export default function QuizDetailsEditor({
     points: 0,
     assignmentGroup: "Quizzes",
     shuffleAnswers: true,
+    hasTimeLimit: true,
     timeLimit: 20,
     multipleAttempts: false,
     attemptsAllowed: 1,
@@ -50,6 +50,7 @@ export default function QuizDetailsEditor({
         points: quiz.points || 0,
         assignmentGroup: quiz.assignmentGroup || "Quizzes",
         shuffleAnswers: quiz.shuffleAnswers !== undefined ? quiz.shuffleAnswers : true,
+        hasTimeLimit: quiz.hasTimeLimit !== undefined ? quiz.hasTimeLimit : true,
         timeLimit: quiz.timeLimit || 20,
         multipleAttempts: quiz.multipleAttempts || false,
         attemptsAllowed: quiz.attemptsAllowed || 1,
@@ -72,7 +73,7 @@ export default function QuizDetailsEditor({
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const updatedQuiz = {
       ...quiz,
       ...formData,
@@ -80,21 +81,10 @@ export default function QuizDetailsEditor({
         ? quiz.questions.reduce((sum: number, q: any) => sum + (q.points || 0), 0)
         : formData.points,
     };
-    
-    // If new quiz, create it first
-    if (!quiz?._id) {
-      try {
-        const created = await coursesClient.createQuiz(quiz.course, updatedQuiz);
-        onSave(created);
-      } catch (error) {
-        console.error("Error creating quiz:", error);
-      }
-    } else {
-      onSave(updatedQuiz);
-    }
+    onSave(updatedQuiz);
   };
 
-  const handleSaveAndPublish = async () => {
+  const handleSaveAndPublish = () => {
     const updatedQuiz = {
       ...quiz,
       ...formData,
@@ -103,18 +93,7 @@ export default function QuizDetailsEditor({
         ? quiz.questions.reduce((sum: number, q: any) => sum + (q.points || 0), 0)
         : formData.points,
     };
-    
-    // If new quiz, create it first
-    if (!quiz?._id) {
-      try {
-        const created = await coursesClient.createQuiz(quiz.course, updatedQuiz);
-        onSaveAndPublish(created);
-      } catch (error) {
-        console.error("Error creating quiz:", error);
-      }
-    } else {
-      onSaveAndPublish(updatedQuiz);
-    }
+    onSaveAndPublish(updatedQuiz);
   };
 
   return (
@@ -213,12 +192,26 @@ export default function QuizDetailsEditor({
         <Row className="mb-3">
           <Col md={6}>
             <Form.Group>
-              <Form.Label>Time Limit (Minutes)</Form.Label>
-              <Form.Control
-                type="number"
-                value={formData.timeLimit}
-                onChange={(e) => handleChange("timeLimit", parseInt(e.target.value) || 20)}
-              />
+              <Form.Label>Time Limit</Form.Label>
+              <div className="d-flex align-items-center">
+                <Form.Check
+                  type="checkbox"
+                  label="Enable Time Limit"
+                  checked={formData.hasTimeLimit}
+                  onChange={(e) => handleChange("hasTimeLimit", e.target.checked)}
+                  className="me-3"
+                />
+                {formData.hasTimeLimit && (
+                  <Form.Control
+                    type="number"
+                    value={formData.timeLimit}
+                    onChange={(e) => handleChange("timeLimit", parseInt(e.target.value) || 20)}
+                    style={{ width: "100px" }}
+                    className="me-2"
+                  />
+                )}
+                {formData.hasTimeLimit && <span>Minutes</span>}
+              </div>
             </Form.Group>
           </Col>
           <Col md={6}>

@@ -4,13 +4,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSelector, useDispatch } from "react-redux";
-import { Form, Row, Col, Button, Nav, Tab } from "react-bootstrap";
-import { updateQuiz } from "../reducer";
+import { Button, Table, Card } from "react-bootstrap";
+import { updateQuiz, publishQuiz } from "../reducer";
 import * as coursesClient from "../../../client";
-import QuizDetailsEditor from "./QuizDetailsEditor";
-import QuizQuestionsEditor from "./QuizQuestionsEditor";
 
-export default function QuizEditor() {
+export default function QuizDetails() {
   const { cid, qid } = useParams();
   const router = useRouter();
   const dispatch = useDispatch();
@@ -22,15 +20,12 @@ export default function QuizEditor() {
   const canEdit = role === "FACULTY" || role === "ADMIN";
   const isStudent = role === "STUDENT";
 
-  const existing = quizzes.find((q: any) => q._id === qid && q.course === cid);
-
   const [quiz, setQuiz] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("details");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchQuiz = async () => {
-      if (qid && qid !== "new") {
+      if (qid) {
         try {
           const fetchedQuiz = await coursesClient.findQuizById(qid as string);
           setQuiz(fetchedQuiz);
@@ -38,61 +33,54 @@ export default function QuizEditor() {
           console.error("Error fetching quiz:", error);
           router.push(`/Courses/${cid}/Quizzes`);
         }
-      } else if (existing) {
-        setQuiz(existing);
-      } else if (qid === "new") {
-        // New quiz - create default quiz object
-        setQuiz({
-          _id: undefined,
-          title: "New Quiz",
-          description: "",
-          quizType: "Graded Quiz",
-          points: 0,
-          assignmentGroup: "Quizzes",
-          shuffleAnswers: true,
-          timeLimit: 20,
-          multipleAttempts: false,
-          attemptsAllowed: 1,
-          showCorrectAnswers: "After submission",
-          accessCode: "",
-          oneQuestionAtATime: true,
-          webcamRequired: false,
-          lockQuestionsAfterAnswering: false,
-          dueDate: "",
-          dueDateInput: "",
-          availableDate: "",
-          availableDateInput: "",
-          untilDate: "",
-          untilDateInput: "",
-          published: false,
-          questions: [],
-          course: cid,
-        });
       }
       setLoading(false);
     };
 
     fetchQuiz();
-  }, [qid, cid, existing, router]);
+  }, [qid, cid, router]);
+
+  const handlePublish = async () => {
+    if (!quiz || !canEdit) return;
+    try {
+      const newPublishedState = !quiz.published;
+      await coursesClient.publishQuiz(quiz._id, newPublishedState);
+      dispatch(publishQuiz({ quizId: quiz._id, published: newPublishedState }));
+      setQuiz({ ...quiz, published: newPublishedState });
+    } catch (error) {
+      console.error("Error publishing quiz:", error);
+    }
+  };
+
+  const getTotalPoints = () => {
+    if (quiz?.questions && quiz.questions.length > 0) {
+      return quiz.questions.reduce((sum: number, q: any) => sum + (q.points || 0), 0);
+    }
+    return quiz?.points || 0;
+  };
+
+  const getQuestionCount = () => {
+    return quiz?.questions ? quiz.questions.length : 0;
+  };
 
   if (loading) {
     return <div className="p-4">Loading...</div>;
   }
 
-  if (!quiz && qid !== "new") {
+  if (!quiz) {
     return <div className="p-4">Quiz not found</div>;
   }
 
   // For students, show quiz details and start button
-  if (isStudent && quiz) {
+  if (isStudent) {
     return (
       <div className="p-4">
         <h2>{quiz.title}</h2>
         <div className="mb-3">
-          <strong>Points:</strong> {quiz.points || 0}
+          <strong>Points:</strong> {getTotalPoints()}
         </div>
         <div className="mb-3">
-          <strong>Questions:</strong> {quiz.questions?.length || 0}
+          <strong>Questions:</strong> {getQuestionCount()}
         </div>
         {quiz.description && (
           <div className="mb-3">
@@ -110,16 +98,19 @@ export default function QuizEditor() {
     );
   }
 
-  // For faculty, show editor
-  if (!canEdit) {
-    return <div className="p-4">You don't have permission to edit this quiz.</div>;
-  }
-
+  // For faculty, show quiz details summary with actions
   return (
     <div className="p-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2>{quiz?.title || "New Quiz"}</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>{quiz.title}</h2>
         <div>
+          <Button
+            variant={quiz.published ? "warning" : "success"}
+            className="me-2"
+            onClick={handlePublish}
+          >
+            {quiz.published ? "Unpublish" : "Publish"}
+          </Button>
           <Button
             variant="secondary"
             className="me-2"
@@ -128,71 +119,101 @@ export default function QuizEditor() {
             Preview
           </Button>
           <Button
-            variant="secondary"
-            onClick={() => router.push(`/Courses/${cid}/Quizzes`)}
+            variant="primary"
+            onClick={() => router.push(`/Courses/${cid}/Quizzes/${qid}/Edit`)}
           >
-            Cancel
+            Edit
           </Button>
         </div>
       </div>
 
-      <Tab.Container activeKey={activeTab} onSelect={(k) => setActiveTab(k || "details")}>
-        <Nav variant="tabs">
-          <Nav.Item>
-            <Nav.Link eventKey="details">Details</Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link eventKey="questions">Questions</Nav.Link>
-          </Nav.Item>
-        </Nav>
+      <Card>
+        <Card.Body>
+          <Table bordered className="mb-0">
+            <tbody>
+              <tr>
+                <td className="fw-bold" style={{ width: "200px" }}>Quiz Type</td>
+                <td>{quiz.quizType || "Graded Quiz"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Points</td>
+                <td>{getTotalPoints()}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Assignment Group</td>
+                <td>{quiz.assignmentGroup || "Quizzes"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Shuffle Answers</td>
+                <td>{quiz.shuffleAnswers ? "Yes" : "No"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Time Limit</td>
+                <td>{quiz.hasTimeLimit === false ? "No Time Limit" : `${quiz.timeLimit || 20} Minutes`}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Multiple Attempts</td>
+                <td>{quiz.multipleAttempts ? "Yes" : "No"}</td>
+              </tr>
+              {quiz.multipleAttempts && (
+                <tr>
+                  <td className="fw-bold">How Many Attempts</td>
+                  <td>{quiz.attemptsAllowed || 1}</td>
+                </tr>
+              )}
+              <tr>
+                <td className="fw-bold">Show Correct Answers</td>
+                <td>{quiz.showCorrectAnswers || "After submission"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Access Code</td>
+                <td>{quiz.accessCode || "None"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">One Question at a Time</td>
+                <td>{quiz.oneQuestionAtATime !== false ? "Yes" : "No"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Webcam Required</td>
+                <td>{quiz.webcamRequired ? "Yes" : "No"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Lock Questions After Answering</td>
+                <td>{quiz.lockQuestionsAfterAnswering ? "Yes" : "No"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Due Date</td>
+                <td>{quiz.dueDate || quiz.dueDateInput || "Not set"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Available Date</td>
+                <td>{quiz.availableDate || quiz.availableDateInput || "Not set"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Until Date</td>
+                <td>{quiz.untilDate || quiz.untilDateInput || "Not set"}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Number of Questions</td>
+                <td>{getQuestionCount()}</td>
+              </tr>
+              <tr>
+                <td className="fw-bold">Published</td>
+                <td>{quiz.published ? "Yes" : "No"}</td>
+              </tr>
+            </tbody>
+          </Table>
+        </Card.Body>
+      </Card>
 
-        <Tab.Content className="mt-3">
-          <Tab.Pane eventKey="details">
-            <QuizDetailsEditor
-              quiz={quiz}
-              onQuizChange={setQuiz}
-              onSave={async (updatedQuiz: any) => {
-                try {
-                  const saved = await coursesClient.updateQuiz(updatedQuiz);
-                  dispatch(updateQuiz(saved));
-                  setQuiz(saved);
-                } catch (error) {
-                  console.error("Error saving quiz:", error);
-                }
-              }}
-              onSaveAndPublish={async (updatedQuiz: any) => {
-                try {
-                  const saved = await coursesClient.updateQuiz({
-                    ...updatedQuiz,
-                    published: true,
-                  });
-                  dispatch(updateQuiz(saved));
-                  router.push(`/Courses/${cid}/Quizzes`);
-                } catch (error) {
-                  console.error("Error saving quiz:", error);
-                }
-              }}
-              onCancel={() => router.push(`/Courses/${cid}/Quizzes`)}
-            />
-          </Tab.Pane>
-          <Tab.Pane eventKey="questions">
-            <QuizQuestionsEditor
-              quiz={quiz}
-              onQuizChange={setQuiz}
-              onSave={async (updatedQuiz: any) => {
-                try {
-                  const saved = await coursesClient.updateQuiz(updatedQuiz);
-                  dispatch(updateQuiz(saved));
-                  setQuiz(saved);
-                } catch (error) {
-                  console.error("Error saving quiz:", error);
-                }
-              }}
-            />
-          </Tab.Pane>
-        </Tab.Content>
-      </Tab.Container>
+      {quiz.description && (
+        <Card className="mt-3">
+          <Card.Header>Description</Card.Header>
+          <Card.Body>
+            <div dangerouslySetInnerHTML={{ __html: quiz.description }} />
+          </Card.Body>
+        </Card>
+      )}
     </div>
   );
 }
-

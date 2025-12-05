@@ -163,10 +163,24 @@ export default function QuizPreview() {
 
       {oneQuestionAtATime ? (
         <div>
-          <div className="mb-3">
-            <p>
+          <div className="mb-3 d-flex justify-content-between align-items-center">
+            <p className="mb-0">
               Question {currentQuestionIndex + 1} of {questions.length}
             </p>
+            {/* Question Navigation */}
+            <div className="d-flex flex-wrap gap-2">
+              {questions.map((_: any, idx: number) => (
+                <Button
+                  key={idx}
+                  variant={idx === currentQuestionIndex ? "primary" : answers[questions[idx]._id] ? "success" : "outline-secondary"}
+                  size="sm"
+                  onClick={() => setCurrentQuestionIndex(idx)}
+                  style={{ minWidth: "40px" }}
+                >
+                  {idx + 1}
+                </Button>
+              ))}
+            </div>
           </div>
           {currentQuestion && (
             <Card className="mb-3">
